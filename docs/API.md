@@ -1,144 +1,110 @@
-# Audio Streaming Backend API
+# Streaming App Backend API
 
-Base URL: `/api`
+Current stack: Hono + Prisma + PostgreSQL + GraphQL Yoga.
 
-MongoDB Atlas stores app metadata and user activity. Do not store large audio files directly in MongoDB for production. Store audio in S3, GCS, Cloudinary, or another object storage service, then save the playable URL or object key in `tracks.audioUrl` / `tracks.storageKey`.
+GraphQL endpoint:
 
-Authenticated endpoints use `Authorization: Bearer <accessToken>`. Flutter should store `accessToken` and `refreshToken` in secure storage, not in regular shared preferences.
+```text
+POST /graphql
+GET /graphql
+```
 
-## Core Models
+REST endpoints are kept only where HTTP streaming or binary upload is the better protocol fit.
 
-### User
-
-- `displayName`
-- `email`
-- `passwordHash`
-- `avatarUrl`
-- `role`: `listener | artist | admin`
-- `isActive`
-
-### Artist
-
-- `name`
-- `bio`
-- `avatarUrl`
-- `coverUrl`
-- `genres`
-- `socials`
-- `verified`
-- `ownerUser`
-- `followerCount`
-
-### Album
-
-- `title`
-- `artist`
-- `type`: `album | single | ep | compilation`
-- `coverUrl`
-- `releaseDate`
-- `genres`
-- `trackCount`
-- `isPublished`
-
-### Track
-
-- `title`
-- `artist`
-- `album`
-- `featuringArtists`
-- `genres`
-- `durationSec`
-- `trackNumber`
-- `coverUrl`
-- `audioUrl`
-- `storageProvider`: `url | local | s3 | gcs | cloudinary`
-- `storageKey`
-- `mimeType`
-- `bitrateKbps`
-- `explicit`
-- `isPublished`
-- `playCount`
-- `likeCount`
-
-### Playlist
-
-- `name`
-- `description`
-- `owner`
-- `coverUrl`
-- `visibility`: `private | public | unlisted`
-- `tracks[]`: `{ track, addedAt, position }`
-- `likeCount`
-
-### Session, Like, Follow, PlayHistory
-
-- `Session`: refresh token hash, device metadata, expiry, revocation state
-- `Like`: user liked `track | album | playlist`
-- `Follow`: user followed artist
-- `PlayHistory`: user/device play events for analytics and recents
-
-## API Gateway Map
+## REST Endpoints
 
 ### Health
 
-- `GET /health`
+```http
+GET /health
+```
+
+### Audio upload
+
+```http
+POST /tracks/upload
+Authorization: Bearer <accessToken>
+Content-Type: multipart/form-data
+```
+
+Required form fields:
+
+- `audio`: audio file
+- `title`
+- `artistId`
+- `durationMs`
+
+Optional form fields:
+
+- `albumId`
+- `trackNumber`
+- `coverUrl`
+- `genres`: comma-separated list
+- `bitrateKbps`
+- `explicit`
+- `isPublished`
+
+### Replace track audio
+
+```http
+PATCH /tracks/:id/audio
+Authorization: Bearer <accessToken>
+Content-Type: multipart/form-data
+```
+
+Required form field:
+
+- `audio`
+
+### Stream audio
+
+```http
+GET /tracks/:id/stream
+Range: bytes=0-
+```
+
+Behavior:
+
+- Local audio returns `200 OK` or `206 Partial Content`.
+- External audio redirects to `tracks.audio_url`.
+- Flutter audio players should use this endpoint as their playable URL.
+
+## GraphQL Operations
 
 ### Auth
 
-- `POST /auth/register`, body `{ "displayName": "...", "email": "...", "password": "...", "role": "listener|artist" }`
-- `POST /auth/login`, body `{ "email": "...", "password": "...", "deviceId": "optional-device-id" }`
-- `POST /auth/refresh`, body `{ "refreshToken": "...", "deviceId": "optional-device-id" }`
-- `POST /auth/logout`, body `{ "refreshToken": "..." }`
+- `register(input)`
+- `login(input)`
+- `refresh(refreshToken, deviceId)`
+- `logout(refreshToken)`
+- `me`
 
-Auth responses return `accessToken`, `refreshToken`, `sessionId`, and `user`.
+### Catalog
 
-### Users
-
-- `GET /users/me` with bearer access token
-
-### Artists
-
-- `GET /artists?q=&genre=&page=&limit=`
-- `POST /artists` with artist/admin bearer access token
-- `GET /artists/:id`
-- `GET /artists/:id/albums`
-- `GET /artists/:id/tracks`
-
-### Albums
-
-- `GET /albums?q=&artist=&genre=&page=&limit=`
-- `POST /albums` with artist/admin bearer access token
-- `GET /albums/:id`
-- `GET /albums/:id/tracks`
-
-### Tracks
-
-- `GET /tracks?q=&artist=&album=&genre=&sort=popular|new&page=&limit=`
-- `POST /tracks` with artist/admin bearer access token
-- `GET /tracks/:id`
-- `PATCH /tracks/:id` with artist/admin bearer access token
-- `GET /tracks/:id/stream`
-- `POST /tracks/:id/play`
-
-### Playlists
-
-- `GET /playlists?q=&mine=true&page=&limit=`
-- `POST /playlists` with bearer access token
-- `GET /playlists/:id`
-- `PATCH /playlists/:id` with bearer access token
-- `POST /playlists/:id/tracks` with bearer access token, body `{ "trackId": "..." }`
-- `DELETE /playlists/:id/tracks/:trackId` with bearer access token
+- `artists(q, genre, limit, offset)`
+- `artist(id)`
+- `albums(artistId, genre, limit, offset)`
+- `album(id)`
+- `tracks(artistId, albumId, genre, limit, offset)`
+- `track(id)`
+- `search(q)`
 
 ### Library
 
-- `GET /library/likes?targetType=track` with bearer access token
-- `POST /library/likes` with bearer access token, body `{ "targetType": "track", "targetId": "..." }`
-- `DELETE /library/likes/:targetType/:targetId` with bearer access token
-- `GET /library/history` with bearer access token
-- `GET /library/artists` with bearer access token
-- `POST /library/artists` with bearer access token, body `{ "artistId": "..." }`
-- `DELETE /library/artists/:artistId` with bearer access token
+- `playlists(mine, limit, offset)`
+- `createPlaylist(input)`
+- `addTrackToPlaylist(playlistId, trackId, position)`
+- `likeTrack(trackId)`
+- `unlikeTrack(trackId)`
+- `followArtist(artistId)`
+- `unfollowArtist(artistId)`
+- `recordPlay(input)`
+- `playHistory(limit)`
 
-### Search
+### Artist content management
 
-- `GET /search?q=`
+- `createArtist(input)`
+- `createAlbum(input)`
+- `createTrackUrl(input)`
+
+For setup and examples, see [HONO_PRISMA_GRAPHQL.md](./HONO_PRISMA_GRAPHQL.md).
