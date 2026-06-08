@@ -160,7 +160,7 @@ export const resolvers: Record<string, any> = {
 
       const user = await context.prisma.user.create({
         data: {
-          displayName: input.displayName,
+          userName: input.userName,
           email: input.email.toLowerCase().trim(),
           passwordHash: hashPassword(input.password),
           avatarUrl: input.avatarUrl,

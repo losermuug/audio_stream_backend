@@ -8,7 +8,7 @@
 erDiagram
   users {
     uuid id PK
-    varchar display_name
+    varchar user_name
     varchar email UK
     text password_hash
     text avatar_url

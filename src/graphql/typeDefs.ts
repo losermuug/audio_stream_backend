@@ -1,7 +1,7 @@
 export const typeDefs = /* GraphQL */ `
   type User {
     id: ID!
-    displayName: String!
+    userName: String!
     email: String!
     avatarUrl: String
     role: String!
@@ -117,7 +117,7 @@ export const typeDefs = /* GraphQL */ `
   }
 
   input RegisterInput {
-    displayName: String!
+    userName: String!
     email: String!
     password: String!
     role: String

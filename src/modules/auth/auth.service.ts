@@ -14,7 +14,7 @@ type UserLike = {
   id: string;
   email: string;
   role: string;
-  displayName?: string;
+  userName?: string;
   avatarUrl?: string | null;
   isActive?: boolean;
   createdAt?: Date;

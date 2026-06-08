@@ -13,7 +13,7 @@ serve(
     port,
   },
   (info) => {
-    console.log(`Hono backend listening on http://localhost:${info.port}`);
+    console.log(`Backend listening on http://localhost:${info.port}`);
     console.log(`GraphQL Yoga ready at http://localhost:${info.port}/graphql`);
   }
 );
