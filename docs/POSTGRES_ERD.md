@@ -12,6 +12,7 @@ erDiagram
     varchar email UK
     text password_hash
     text avatar_url
+    date birth_date
     user_role role
     boolean is_active
     timestamptz created_at
